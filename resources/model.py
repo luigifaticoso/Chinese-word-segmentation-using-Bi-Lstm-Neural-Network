@@ -1,47 +1,24 @@
-from __future__ import print_function
-import numpy as np
+import tensorflow as tf
+import tensorflow.keras as K
+import numpy as np 
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-from keras.preprocessing import sequence
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Embedding, LSTM, Bidirectional
+def create_model(vocab_size, hidden_size):
 
+    print("Creating KERAS model")
+    model = Sequential()
 
+    model.add(Embedding(len(vocabolario), vocab_size, mask_zero=True))
+    #add a LSTM layer with some dropout in it
+    model.add(Bidirectional(LSTM(hidden_size, return_sequences=False,dropout=0.2, recurrent_dropout=0.2,), input_shape=(vocab_size, 1)))
+    # add a dense layer with softmax
+    model.add(Dense(vocab_size, activation='softmax'))
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['acc'])
+    # Let's print a summary of the model
+    model.summary()
 
+    cbk = K.callbacks.TensorBoard("logging/keras_model")
+    print("\nStarting training...")
 
-def create_model(x_train,y_train,x_test,y_test):
-	max_features = 20000
-	# cut texts after this number of words
-	# (among top max_features most common words)
-	maxlen = 100
-	batch_size = 32
-
-	print('Pad sequences (samples x time)')
-	x_train = sequence.pad_sequences(x_train, maxlen=maxlen)
-	x_test = sequence.pad_sequences(x_test, maxlen=maxlen)
-	print('x_train shape:', x_train.shape)
-	print('x_test shape:', x_test.shape)
-	y_train = np.array(y_train)
-	y_test = np.array(y_test)
-
-	model = Sequential()
-	model.add(Embedding(max_features, 128, input_length=maxlen))
-	model.add(Bidirectional(LSTM(64)))
-	model.add(Dropout(0.5))
-	model.add(Dense(1, activation='sigmoid'))
-
-	return model
-
-# # try using different optimizers and different optimizer configs
-# model.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
-
-# print('Train...')
-# model.fit(x_train, y_train,
-#           batch_size=batch_size,
-#           epochs=4,
-#           validation_data=[x_test, y_test])
-
-# print('Loading data...')
-# (x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=max_features)
-# print(len(x_train), 'train sequences')
-# print(len(x_test), 'test sequences')
-
+    return model

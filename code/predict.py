@@ -1,12 +1,12 @@
 from argparse import ArgumentParser
-from ..resources/model import create_model
+import importlib
 
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument("input_path", help="The path of the input file")
-    parser.add_argument("output_path", help="The path of the output file")
-    parser.add_argument("resources_path", help="The path of the resources needed to load your model")
+    parser.add_argument("input_path",default='public_homework_1/resources/output.utf8' ,help="The path of the input file")
+    parser.add_argument("output_path",default='public_homework_1/resources/output.txt' ,help="The path of the output file")
+    parser.add_argument("resources_path",default='public_homework_1/resources', help="The path of the resources needed to load your model")
 
     return parser.parse_args()
 
@@ -26,7 +26,9 @@ def predict(input_path, output_path, resources_path):
     :param resources_path: the path of the resources folder containing your model and stuff you might need.
     :return: None
     """
-    model = create_model()
+    train_x,train_y,test_x,test_y,dev_x,dev_y,vocabolary = make_dataset(input_path,'dataset.txt')
+
+    model = create_model(len(vocabolary,20))
     # try using different optimizers and different optimizer configs
     model.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
 
