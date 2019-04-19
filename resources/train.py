@@ -16,10 +16,15 @@ from model import create_model
 
 
 
-train_x,train_y,test_x,test_y,dev_x,dev_y,vocabolary = make_dataset(input_path,'dataset.txt')
+train_x,train_y,test_x,test_y,dev_x,dev_y,vocabolary = make_dataset('output.utf8','dataset.txt')
 model = create_model(len(vocabolary),20)
 batch_size = 32
 epochs = 3
+# Let's print a summary of the model
+model.summary()
+
+cbk = K.callbacks.TensorBoard("logging/keras_model")
+print("\nStarting training...")
 model.fit(train_x, train_y, epochs=epochs, batch_size=batch_size,
           shuffle=True, validation_data=(dev_x, dev_y), callbacks=[cbk]) 
 print("Training complete.\n")

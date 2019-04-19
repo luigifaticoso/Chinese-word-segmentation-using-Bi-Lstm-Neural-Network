@@ -6,19 +6,18 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 def create_model(vocab_size, hidden_size):
 
+
     print("Creating KERAS model")
-    model = Sequential()
-
-    model.add(Embedding(len(vocabolario), vocab_size, mask_zero=True))
+    model = K.models.Sequential()
+    # remember to set mask_zero=True or the model consider the padding as a valid timestep!
+    model.add(K.layers.Embedding(len(vocabolario), MAX_LENGTH, mask_zero=True))
     #add a LSTM layer with some dropout in it
-    model.add(Bidirectional(LSTM(hidden_size, return_sequences=False,dropout=0.2, recurrent_dropout=0.2,), input_shape=(vocab_size, 1)))
-    # add a dense layer with softmax
-    model.add(Dense(vocab_size, activation='softmax'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['acc'])
-    # Let's print a summary of the model
-    model.summary()
+    model.add(K.layers.Bidirectional(K.layers.LSTM(20, return_sequences=True,dropout=0.2, recurrent_dropout=0.2,), input_shape=(MAX_LENGTH, 1)))
+    model.add(K.layers.Bidirectional(K.layers.LSTM(20, return_sequences=False,dropout=0.2, recurrent_dropout=0.2,), input_shape=(MAX_LENGTH, 1)))
+    # add a dense layer with sigmoid to get a probability value from 0.0 to 1.0
+    model.add(K.layers.Dense(MAX_LENGTH, activation='softmax'))
 
-    cbk = K.callbacks.TensorBoard("logging/keras_model")
-    print("\nStarting training...")
+    # we are going to use the Adam optimizer which is a really powerful optimizer.
+    model.compile(loss='binary_crossentropy', optimizer=K.optimizers.Adam(), metrics=['acc'])
 
     return model
