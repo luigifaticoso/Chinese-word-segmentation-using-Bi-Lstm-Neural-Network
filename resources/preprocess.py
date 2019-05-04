@@ -1,210 +1,169 @@
 from tqdm import tqdm
 import os
-
-from tqdm import tqdm
-vocabolario = {}
-dataset = "output.utf8"
-f = open(dataset,'r')
-fw = open("training.txt","w+")
-listafrasi = f.readlines()
-count = 0
-for frase in tqdm(range(len(listafrasi))):
-  frase_new = listafrasi[frase].strip()
-  for e in frase_new:
-    if e not in vocabolario.keys():
-      vocabolario[e] = count
-      count+=1
-  parola_dict = ""
-  frase_splitted = frase_new.split("\u3000")
-  frase_dict = frase_new.replace("\u3000","")
-  for parola in frase_splitted:
-    if len(parola) == 1:
-      parola_dict+='s'
-    elif len(parola) > 1:
-      parola_dict+='b'
-      for lunghezza in range(len(parola)-2):
-        parola_dict+='i'
-      parola_dict+='e'
-      
-  fw.write(frase_dict + '\t' + parola_dict + '\n')
-  #dizionario_frasi[frase_dict] = parola_dict
-# print(vocabolario)
-        
-        
-import tensorflow as tf
-import tensorflow.keras as K
 import numpy as np 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-#DEFINE SOME COSTANTS
-MAX_LENGTH = 0
-EMBEDDING_SIZE = 32
-HIDDEN_SIZE = 100
+from tqdm import tqdm
+import time
 
-#(train_x,train_y)
-
-fl = open('training.txt','r')
-
-frasi = fl.readlines()
-lista_frasi_train = list()
-lista_frasi_test = list()
-lista_label_train = list()
-lista_label_test = list()
-# train_x = np.zeros((len(frasi), MAX_LENGTH))
-count = 1
-for idx in tqdm(range(len(frasi))):
-  frase_splitted = frasi[idx].split('\t')
-  frase_words = frase_splitted[0]
-  label = frase_splitted[1].strip()
-  frase_nums = list()
-  label_nums = list()
-  MAX_LENGTH = max(MAX_LENGTH,len(frase_words))
-  count+=1
-  for i in frase_words:
-    frase_nums.append(vocabolario[i])
-
-  for l in label:
-      label_nums.append(l)
-
-  if count < (70*len(frasi))/100:
-    lista_frasi_train.append(frase_nums)
-    lista_label_train.append(label_nums)
-  else:
-    lista_frasi_test.append(frase_nums)
-    lista_label_test.append(label_nums)
-
-
-train_x = np.asarray(lista_frasi_train)
-train_y = np.asarray(lista_label_train)
-test_x = np.asarray(lista_frasi_test)
-test_y = np.asarray(lista_label_test)
-
-print("##### START PADDING")
-# When truncating, get rid of initial words and keep last part of the review. (longer sentences)
-# When padding, pad at the end of the sentence. (shorter sentences)
-train_x = pad_sequences(train_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-train_y = pad_sequences(train_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-
-test_x = pad_sequences(test_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-test_y = pad_sequences(train_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-print("train_x shape {}, train_y shape {}".format(train_x.shape,train_y.shape))
-print("##### END PADDING")
-
-
-print("##### START SPLITTING")      
-# Take 5% of the training set and use it as dev set
-# stratify makes sure that the development set follows the same distributions as the training set:
-# half positive and half nevative.
-train_x, dev_x, train_y, dev_y = train_test_split(train_x, train_y, test_size=.05, random_state=42)
-print("##### END SPLITTING") 
-
-print("Training set shape:", train_x.shape)
-print("Dev set shape:", dev_x.shape)
-print("Test set shape:", test_x.shape)
-
-print("Creating KERAS model")
-model = Sequential()
-# remember to set mask_zero=True or the model consider the padding as a valid timestep!
-model.add(Embedding(len(vocabolario), 188, mask_zero=True))
-#add a LSTM layer with some dropout in it
-model.add(Bidirectional(LSTM(HIDDEN_SIZE, return_sequences=False,dropout=0.2, recurrent_dropout=0.2,), input_shape=(188, 1)))
-# add a dense layer with sigmoid to get a probability value from 0.0 to 1.0
-model.add(Dense(188, activation='softmax'))
-
-# we are going to use the Adam optimizer which is a really powerful optimizer.
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['acc'])
-batch_size = 32
-epochs = 3
-# Let's print a summary of the model
-model.summary()
-
-cbk = K.callbacks.TensorBoard("logging/keras_model")
-print("\nStarting training...")
-model.fit(train_x, train_y, epochs=epochs, batch_size=batch_size,
-          shuffle=True, validation_data=(dev_x, dev_y), callbacks=[cbk]) 
-print("Training complete.\n")
-
-print("\nEvaluating test...")
-loss_acc = model.evaluate(test_x, test_y, verbose=0)
-print("Test data: loss = %0.6f  accuracy = %0.2f%% " % (loss_acc[0], loss_acc[1]*100))
-
+classes = {
+  'B' : np.array([1,0,0,0]),
+  'I' : np.array([0,1,0,0]),
+  'E' : np.array([0,0,1,0]),
+  'S' : np.array([0,0,0,1]),
+}
 
 def make_dataset(input_path,output_path):
-  vocabolario = {}
-  dataset = input_path
-  f = open(dataset,'r')
-  fw = open(output_path,"w+")
-  frasi = fl.readlines()
-  lista_frasi_train = list()
-  lista_frasi_test = list()
-  lista_label_train = list()
-  lista_label_test = list()
-  lunghezza_frasi = list()
-  # train_x = np.zeros((len(frasi), MAX_LENGTH))
-  count = 1
-  for idx in tqdm(range(len(frasi))):
-    frase_splitted = frasi[idx].split('\t')
-    frase_words = frase_splitted[0]
-    label = frase_splitted[1].strip()
-    frase_nums = list()
-    label_nums = list()
-    #TODO:  fare la media
-  #   lunghezza_frasi.append(len(frase_words))
-    MAX_LENGTH = max(MAX_LENGTH,len(frase_words))
-    count+=1
-    for i in frase_words:
-      frase_nums.append(vocabolario[i])
 
-    for l in label:
-      if l == 'b':
-        label_nums.append(1)
-      elif l == 'i':
-        label_nums.append(2)
-      elif l == 'e':
-        label_nums.append(3)
-      elif l == 's':
-        label_nums.append(4)
-          
-        
+  ##
+  ##  Here we loop through the sentences to labelling every word
+  ##  we add every word we don't know to the dictionary giving it a sequential integer identifier
+  ##
 
-    if count < (70*len(frasi))/100:
-      lista_frasi_train.append(frase_nums)
-      lista_label_train.append(label_nums)
-      print(frase_nums,label_nums)
-      exit()
+  char_vocabulary = {}
+  bigram_vocabulary = {}
+  ##  This is used to handle unknown char in the test set
+  bigram_vocabulary['U'] = 1
+  char_vocabulary['U'] = 1
+  f = open(input_path,'r')
+  fw = open(output_path,"w")
+  sentence_list = f.readlines()
+  count_char = 2
+  count_bigram = 2
+  for sentence in tqdm(range(len(sentence_list))):
+    sentence_new = sentence_list[sentence].strip()
+    sentence_voc = sentence_new.replace("\u3000","")
+    for e in range(len(sentence_voc)):
+      if sentence_voc[e] not in char_vocabulary.keys():
+        count_char+=1
+        char_vocabulary[sentence_voc[e]] = count_char
+      if e != len(sentence_voc)-1:
+        bigram = sentence_voc[e]+sentence_voc[e+1]
+        if bigram not in bigram_vocabulary.keys():
+          count_bigram +=1
+          bigram_vocabulary[bigram] = count_bigram
+      else:
+        bigram = sentence_voc[e]+"E"
+        if bigram not in bigram_vocabulary.keys():
+          count_bigram+=1
+          bigram_vocabulary[bigram] = count_bigram
+
+    word_dict = ""
+    sentence_splitted = sentence_new.split("\u3000")
+    for word in sentence_splitted:
+      if len(word) == 1:
+        word_dict+='S'
+      elif len(word) > 1:
+        word_dict+='B'
+        for lunghezza in range(len(word)-2):
+          word_dict+='I'
+        word_dict+='E'
+
+    
+    fw.write(sentence_voc + '\t' + word_dict + '\n')
+
+  ##
+  ##  Preprocessing first part ended.
+  ##
+
+
+  ##
+  ##  Here I look to set the MAX_LENGHT so we loop thought the sentences and pick the maximum among all the lenghts
+  ##
+
+  MAX_LENGTH = 0
+  fl = open(output_path,'r')
+  sentences = fl.readlines()
+  for i in sentences: 
+    sentence_splitted = i.split('\t')
+    sentence_words = sentence_splitted[0]
+    MAX_LENGTH = max(MAX_LENGTH,len(sentence_words))
+  print("Maximum lenght is: {}".format(MAX_LENGTH))
+  
+  lista_sentences_train_char = list()
+  lista_sentences_train_bigram = list()
+  lista_sentences_test_char = list()
+  lista_sentences_test_bigram = list()
+  lista_label_train_char = list()
+  lista_label_test_char = list()
+
+  ##
+  ##  For the second part of the training i am looking to create the set used for the neural network  
+  ##
+
+  for idx in tqdm(range(len(sentences))):
+    sentence_splitted = sentences[idx].split('\t')
+    sentence_words = sentence_splitted[0]
+    label = sentence_splitted[1].strip()
+    sentence_nums_char = []
+    sentence_nums_bigram = []
+    label_nums = []
+    for i in range(len(sentence_words)):
+      sentence_nums_char.append(char_vocabulary[sentence_words[i]])
+      if i < len(sentence_words)-1:
+        sentence_nums_bigram.append(bigram_vocabulary[sentence_words[i]+sentence_words[i+1]])
+      else:
+        sentence_nums_bigram.append(bigram_vocabulary[sentence_words[i]+'E'])
+
+    if(len(sentence_nums_char)!=len(sentence_nums_bigram)):
+      print('mismatch')
+    for l in range(len(label)):
+      label_nums.append(classes[label[l]])
+      
+
+    ##
+    ##  Following is the padding used for the y set in which i have added [0,0,0,0] until reaching the MAX_LENGTH
+    ##
+
+    while(len(label_nums)<MAX_LENGTH):
+      label_nums.append(np.array([0,0,0,0]))
+
+    ##
+    ##  Here i am diving the set in 80% for the training and rest for the testing
+    ##
+
+    if idx < (80*(len(sentences))/100):
+      lista_sentences_train_char.append(sentence_nums_char)
+      lista_sentences_train_bigram.append(sentence_nums_bigram)
+      lista_label_train_char.append(np.array(label_nums))
     else:
-      lista_frasi_test.append(frase_nums)
-      lista_label_test.append(label_nums)
+      lista_sentences_test_char.append(sentence_nums_char)
+      lista_sentences_test_bigram.append(sentence_nums_bigram)
+      lista_label_test_char.append(np.array(label_nums))
 
-  # MAX_LENGTH = int(sum(lunghezza_frasi)/len(lunghezza_frasi))
-  # MAX_LENGTH = int(MAX_LENGTH/2)
-  train_x = np.asarray(lista_frasi_train)
-  train_y = np.asarray(lista_label_train)
-  test_x = np.asarray(lista_frasi_test)
-  test_y = np.asarray(lista_label_test)
+  train_x_char = lista_sentences_train_char
+  train_x_bigram = lista_sentences_train_bigram
+  train_y = np.array(lista_label_train_char)
+
+  test_x_char = lista_sentences_test_char
+  test_x_bigram = lista_sentences_test_bigram
+  test_y = np.array(lista_label_test_char)
+
+  ##
+  ##  Here we pad the x files until reaching the MAX_LENGTH
+  ##
 
   print("##### START PADDING")
-  # When truncating, get rid of initial words and keep last part of the review. (longer sentences)
-  # When padding, pad at the end of the sentence. (shorter sentences)
-  train_x = pad_sequences(train_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-  train_y = pad_sequences(train_y, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-
-  test_x = pad_sequences(test_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-  test_y = pad_sequences(train_x, truncating='pre', padding='post', maxlen=MAX_LENGTH)
-  print("train_x shape {}, train_y shape {}".format(train_x.shape,train_y.shape))
+  train_x_char = pad_sequences(train_x_char, truncating='pre', padding='post', maxlen=MAX_LENGTH)
+  train_x_bigram = pad_sequences(train_x_bigram, truncating='pre', padding='post', maxlen=MAX_LENGTH)
+  test_x_char = pad_sequences(test_x_char, truncating='pre', padding='post', maxlen=MAX_LENGTH)
+  test_x_bigram = pad_sequences(test_x_bigram, truncating='pre', padding='post', maxlen=MAX_LENGTH)
   print("##### END PADDING")
 
+  ##
+  ##  Take 5% of the training set and use it as dev set
+  ##
 
+  print("train x bigram shape: {}, train_y shape: {}".format(train_x_bigram.shape,train_y.shape))
   print("##### START SPLITTING")      
-  # Take 5% of the training set and use it as dev set
-  # stratify makes sure that the development set follows the same distributions as the training set:
-  # half positive and half nevative.
-  train_x, dev_x, train_y, dev_y = train_test_split(train_x, train_y, test_size=.05)
+  train_x_char, dev_x_char, _, dev_y_char = train_test_split(train_x_char, train_y, test_size=.05)
+
+  train_x_bigram, dev_x_bigram, train_y_new, dev_y_bigram = train_test_split(train_x_bigram, train_y, test_size=.05)
+
   print("##### END SPLITTING") 
 
-  print("Training set shape:", train_x.shape)
-  print("Dev set shape:", dev_x.shape)
-  print("Test set shape:", test_x.shape)
+  print("Training_x set shape:", train_x_char.shape)
+  print("Training_x bigram set shape:", train_x_bigram.shape)
 
 
-  return train_x,train_y,test_x,test_y,dev_x,dev_y,vocabolary
+  return train_x_char,train_x_bigram,train_y_new,test_x_char,test_x_bigram,test_y,dev_x_char,dev_y_char,dev_x_bigram,dev_y_bigram,char_vocabulary,bigram_vocabulary,MAX_LENGTH
